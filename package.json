@@ -4,7 +4,5 @@
   "displayName": "altVAT",
   "description": "Unity-specific alternative system for creating VAT textures from Houdini via CSV export",
   "hideInEditor": false,
-  "type": "library",
-  "dependencies": {    
-  }
+  "type": "tool"
 }
