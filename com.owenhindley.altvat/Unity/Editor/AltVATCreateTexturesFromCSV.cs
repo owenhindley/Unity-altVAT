@@ -46,7 +46,7 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                 SaveAsset(newMesh, targetPath);
                 
                 // create textures
-
+                
                 // positions
                 var diffInfo = CreateNormalizedDiffList(frames.meshFrames[0].verts,
                     frames.meshFrames.Select(info => info.verts).ToList());
@@ -62,8 +62,18 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
 
                 var normalsTex = CreateTextureFromDiffs(diffInfo.diffs, textureSize, textureDepth);
 
-                targetPath = targetPath.Replace("_mesh", "_normalsTexture");
+                targetPath = targetPath.Replace("_posTexture", "_normalsTexture");
                 SaveAsset(normalsTex, targetPath);
+                
+                // create material
+                var material = new Material(Shader.Find("altVAT/altVAT_UnlitShader"));
+                material.SetTexture("_PositionsTex", positionTex);
+                material.SetTexture("_NormalsTex", normalsTex);
+                material.SetFloat("_FrameCount", frames.meshFrames.Count);
+                material.SetVector("_BoundsMin", diffInfo.minBounds);
+                material.SetVector("_BoundsMax", diffInfo.maxBounds);
+                
+                SaveAsset(material, targetPath.Replace("_normalsTexture.asset", "_material.mat"));
 
             }
             
@@ -87,6 +97,15 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         
+    }
+
+    private class AnimInfo
+    {
+        public int numFrames;
+        public int numVerts;
+        public Vector3 boundsMax;
+        public Vector3 boundsMin;
+
     }
 
     private class MeshInfo
