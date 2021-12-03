@@ -1,7 +1,7 @@
 {
-  "name": "com.owenhindley.unityAltVAT",
+  "name": "com.owenhindley.altVAT",
   "version": "0.1.0",
-  "displayName": "Unity altVAT",
+  "displayName": "altVAT",
   "description": "Unity-specific alternative system for creating VAT textures from Houdini via CSV export",
   "hideInEditor": false,
   "type": "library",
