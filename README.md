@@ -6,13 +6,14 @@ I wanted a simpler, more straightforward approach to performing vertex-level dis
 
 
 Advantages of this system:
+- Simpler - moves the texture creation logic over to a Unity editor script, for you to extend / modify as you need.
 - Animation data comes out of Houdini as a simple CSV list of positions, normals, and UVs, which is then fed into an Editor Script in Unity
 - Uses 3D textures (with per-frame data stored in the 'depth' / Z dimension), so conceptually easier to understand / debug
 - Simpler shader code (written in ShaderLab, rather than ShaderGraph), so hopefully should provide better performance
 
 (IMPORTANT) Disadvantages of this system:
 - Slower - it takes much longer to export everything from Houdini and re-import into Unity.
-- Less efficient memory usage - unless you're lucky to have a vertex count that has an integer sqaure root, you're always going to have some wasted memory.
+- Less efficient memory usage - unless you're lucky to have a vertex count that has an integer sqaure root, you're always going to have some wasted texture memory due to padding.
 - Compatibility - this is tested and works on Quest 2, but not all platforms may support 3D textures.
 - Extensibility - because this is written in Shaderlab code, you'll need to grab the vertex shader from the included shaders and integrate them into a more complex surface shader.
 
