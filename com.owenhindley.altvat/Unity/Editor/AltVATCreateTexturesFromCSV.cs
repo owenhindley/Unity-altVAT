@@ -98,7 +98,7 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                 SaveAsset(newMesh, targetPath);
                 
                 // create material
-                var material = new Material(Shader.Find("altVAT/altVAT_SimpleSpecularShader"));
+                var material = new Material(Shader.Find("altVAT/altVAT_SimpleDirectionalLitShader"));
                 material.SetTexture("_PositionsTex", positionTex);
                 material.SetTexture("_NormalsTex", normalsTex);
                 material.SetFloat("_FrameCount", frames.meshFrames.Count);

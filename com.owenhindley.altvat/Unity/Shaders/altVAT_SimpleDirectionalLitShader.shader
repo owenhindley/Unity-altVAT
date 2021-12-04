@@ -1,4 +1,4 @@
-Shader "altVAT/altVAT_SimpleSpecularShader"
+Shader "altVAT/altVAT_SimpleDirectionalLitShader"
 {
     Properties
     {
