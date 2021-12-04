@@ -37,44 +37,108 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
             {
                 var frames = ExtractFramesFromCSV(sourceText.text, sourceText.name);
 
-                // create mesh
-                var newMesh = CreateStartingMesh(frames.meshFrames[0], textureSize);
+                Debug.Log("Extracted " + frames.meshFrames.Count + " frames");
+                Debug.Log("Num verts : " + frames.meshFrames[0].verts.Count);
 
+                if (textureDepth < frames.meshFrames.Count)
+                {
+                    Debug.LogError("ERROR - number of frames exceeds texture depth, frames will be dropped");
+                    int diff = frames.meshFrames.Count - textureDepth;
+                    frames.meshFrames.RemoveRange(frames.meshFrames.Count - diff, diff);
+                }
+
+                if (frames.meshFrames[0].verts.Count > Mathf.Pow(textureSize, 2))
+                {
+                    throw new Exception("ERROR - texture size " + textureSize +
+                                        " (squared) is smaller than the number of vertices, cannot continue");
+                }
+                
                 var sourcePath = AssetDatabase.GetAssetPath(sourceText);
-                var targetPath = sourcePath.Replace("csv", "_mesh.asset");
-                
-                SaveAsset(newMesh, targetPath);
-                
+
                 // create textures
                 
                 // positions
-                var diffInfo = CreateNormalizedDiffList(frames.meshFrames[0].verts,
+                var diffInfoPos = CreateNormalizedDiffList(frames.meshFrames[0].verts,
                     frames.meshFrames.Select(info => info.verts).ToList());
 
-                var positionTex = CreateTextureFromDiffs(diffInfo.diffs, textureSize, textureDepth);
+                Debug.Log("Diff info pos : ");
+                Debug.Log("Max bounds pos:");
+                Debug.Log(diffInfoPos.maxBounds);
+                Debug.Log("Min bounds pos:");
+                Debug.Log(diffInfoPos.minBounds);
 
-                targetPath = targetPath.Replace("_mesh", "_posTexture");
+                var positionTex = CreateTextureFromDiffs(diffInfoPos.diffs, textureSize, textureDepth);
+
+                var targetPath = sourcePath.Replace(".csv", "_posTexture");
                 SaveAsset(positionTex, targetPath);
                 
                 // normals
-                diffInfo = CreateNormalizedDiffList(frames.meshFrames[0].normals,
-                    frames.meshFrames.Select(info => info.verts).ToList());
+                var diffInfoNorm = CreateNormalizedDiffList(frames.meshFrames[0].normals,
+                    frames.meshFrames.Select(info => info.normals).ToList());
+                
+                Debug.Log("Diff info normals : ");
+                Debug.Log("Max bounds normals:");
+                Debug.Log(diffInfoNorm.maxBounds);
+                Debug.Log("Min bounds normals:");
+                Debug.Log(diffInfoNorm.minBounds);
 
-                var normalsTex = CreateTextureFromDiffs(diffInfo.diffs, textureSize, textureDepth);
+                var normalsTex = CreateTextureFromDiffs(diffInfoNorm.diffs, textureSize, textureDepth);
 
-                targetPath = targetPath.Replace("_posTexture", "_normalsTexture");
+                targetPath = sourcePath.Replace(".csv", "_normalsTexture");
                 SaveAsset(normalsTex, targetPath);
                 
+                /// create mesh
+                var newMesh = CreateStartingMesh(frames.meshFrames[0], textureSize);
+                
+                // extend bounds
+                newMesh.RecalculateBounds();
+                
+                targetPath = sourcePath.Replace(".csv", "_mesh.asset");
+                
+                SaveAsset(newMesh, targetPath);
+                
                 // create material
-                var material = new Material(Shader.Find("altVAT/altVAT_UnlitShader"));
+                var material = new Material(Shader.Find("altVAT/altVAT_SimpleSpecularShader"));
                 material.SetTexture("_PositionsTex", positionTex);
                 material.SetTexture("_NormalsTex", normalsTex);
                 material.SetFloat("_FrameCount", frames.meshFrames.Count);
-                material.SetVector("_BoundsMin", diffInfo.minBounds);
-                material.SetVector("_BoundsMax", diffInfo.maxBounds);
+                material.SetVector("_BoundsMinPos", diffInfoPos.minBounds);
+                material.SetVector("_BoundsMaxPos", diffInfoPos.maxBounds);
+                material.SetVector("_BoundsMinNorm", diffInfoNorm.minBounds);
+                material.SetVector("_BoundsMaxNorm", diffInfoNorm.maxBounds);
                 
-                SaveAsset(material, targetPath.Replace("_normalsTexture.asset", "_material.mat"));
+                // search for light
+                if (GameObject.FindObjectOfType<Light>() != null)
+                {
+                    var l = GameObject.FindObjectOfType<Light>();
+                    var lightDir = l.transform.TransformDirection(Vector3.forward);
+                    material.SetVector("_LightDirection", lightDir);
 
+                }
+                
+                SaveAsset(material, sourcePath.Replace(".csv", "_material.mat"));
+                
+                // create prefab
+                GameObject animPrefab = new GameObject();
+                animPrefab.name = sourceText.name + "_prefab";
+                var mf = animPrefab.AddComponent<MeshFilter>();
+                mf.mesh = newMesh;
+                var mr = animPrefab.AddComponent<MeshRenderer>();
+                mr.material = material;
+
+                var prefabPath = sourcePath.Replace(".csv", ".prefab");
+                try
+                {
+                    AssetDatabase.DeleteAsset(prefabPath);
+                }
+                catch (Exception ex)
+                {
+                }
+
+                PrefabUtility.SaveAsPrefabAsset(animPrefab, prefabPath);
+                
+                // remove from heirarchy 
+                DestroyImmediate(animPrefab);
             }
             
         }
@@ -174,14 +238,14 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                     var p_x = float.Parse(cols[1]);
                     var p_y = float.Parse(cols[2]);
                     var p_z = float.Parse(cols[3]);
-                    currentMesh.verts.Add(new Vector3(p_x, p_y, p_z));
+                    currentMesh.verts.Add(new Vector3(-p_x, p_y, p_z));
                     break;
                 case "n":
                     // add normal
                     var n_x = float.Parse(cols[1]);
                     var n_y = float.Parse(cols[2]);
                     var n_z = float.Parse(cols[3]);
-                    currentMesh.normals.Add(new Vector3(n_x, n_y, n_z));
+                    currentMesh.normals.Add(Vector3.Normalize(new Vector3(-n_x, n_y, n_z)));
                     break;
                 case "uv":
                     // add uv
@@ -220,8 +284,8 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                 maxBounds.y = Mathf.Max(diff.y, maxBounds.y);
                 minBounds.y = Mathf.Min(diff.y, minBounds.y);
                 
-                maxBounds.x = Mathf.Max(diff.z, maxBounds.z);
-                minBounds.x = Mathf.Min(diff.z, minBounds.z);
+                maxBounds.z = Mathf.Max(diff.z, maxBounds.z);
+                minBounds.z = Mathf.Min(diff.z, minBounds.z);
             }
             diffs.Add(frameDiff);
         }
@@ -234,7 +298,8 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                 frame[i] = new Vector3(
                     Mathf.InverseLerp(minBounds.x, maxBounds.x, frame[i].x),
                     Mathf.InverseLerp(minBounds.y, maxBounds.y, frame[i].y),
-                    Mathf.InverseLerp(minBounds.z, maxBounds.z, frame[i].z));
+                    Mathf.InverseLerp(minBounds.z, maxBounds.z, frame[i].z)
+                    );
 
             }
         }
@@ -283,6 +348,7 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
 
         // calculate indices
         if (l.verts.Count % 3 != 0) throw new Exception("ERROR - verts not divisible by 3");
+        
         var indices = Enumerable.Range(0, l.verts.Count).ToArray();
        
         m.SetIndices(indices, MeshTopology.Triangles, 0);
