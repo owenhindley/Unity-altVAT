@@ -69,7 +69,7 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
 
                 var positionTex = CreateTextureFromDiffs(diffInfoPos.diffs, textureSize, textureDepth);
 
-                var targetPath = sourcePath.Replace(".csv", "_posTexture");
+                var targetPath = sourcePath.Replace(".csv", "_posTexture.asset");
                 SaveAsset(positionTex, targetPath);
                 
                 // normals
@@ -84,7 +84,7 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
 
                 var normalsTex = CreateTextureFromDiffs(diffInfoNorm.diffs, textureSize, textureDepth);
 
-                targetPath = sourcePath.Replace(".csv", "_normalsTexture");
+                targetPath = sourcePath.Replace(".csv", "_normalsTexture.asset");
                 SaveAsset(normalsTex, targetPath);
                 
                 /// create mesh
