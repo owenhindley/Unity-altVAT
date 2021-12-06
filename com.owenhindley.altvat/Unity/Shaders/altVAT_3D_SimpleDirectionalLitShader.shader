@@ -1,4 +1,4 @@
-Shader "altVAT/altVAT_UnlitShader"
+Shader "altVAT/altVAT_3D_SimpleDirectionalLitShader"
 {
     Properties
     {
@@ -6,7 +6,9 @@ Shader "altVAT/altVAT_UnlitShader"
         _NormalsTex ("Normals", 3D) = "white" {}
         _NormalisedFrame ("Normalised Frame", Range(0,1)) = 0
         
+        
         _LightDirection ("Light Direction", Vector) = (0,0,0,0)
+        _AmbientLightAmount("Ambient Light", float) = 0
         
         _BoundsMinPos ("Min Bounds Pos", Vector) = (0,0,0,0)
         _BoundsMaxPos ("Max Bounds Pos", Vector) = (0,0,0,0)
@@ -16,7 +18,8 @@ Shader "altVAT/altVAT_UnlitShader"
         _Color( "Color", Color ) = ( 1.0, 1.0, 1.0, 1.0 )		
         
         [MaterialToggle] _Autoplay("Autoplay", float) = 0
-    }
+        
+	}
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -24,6 +27,7 @@ Shader "altVAT/altVAT_UnlitShader"
 
         Pass
         {
+            
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -44,10 +48,9 @@ Shader "altVAT/altVAT_UnlitShader"
             {               
                 float4 vertex : SV_POSITION;
                 float4 normal : NORMAL;
-                float4 color : COLOR;         
+                float4 color : COLOR;
             };
 
-           
             float _NormalisedFrame;            
             float _Autoplay;
             
@@ -65,11 +68,12 @@ Shader "altVAT/altVAT_UnlitShader"
 
             uniform float4 _Color;
 			
-            
+            uniform float4 _LightDirection;
+            float _AmbientLightAmount;
 
             v2f vert (appdata v)
             {
-               v2f o;
+                v2f o;
 
                 if (_Autoplay > 0)
                 {
@@ -93,7 +97,8 @@ Shader "altVAT/altVAT_UnlitShader"
 
                 float4 norm = -v.normal + diff;
 
-                o.color = _Color;
+                float illuminationAmt = clamp(dot(norm.xyz, _LightDirection.xyz), _AmbientLightAmount, _LightDirection.w);
+                o.color = (illuminationAmt * _Color);
 
 
                 o.normal = norm;
@@ -104,7 +109,7 @@ Shader "altVAT/altVAT_UnlitShader"
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float4 col = _Color;
+                float4 col = i.color;
                 // apply fog
                 // UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;

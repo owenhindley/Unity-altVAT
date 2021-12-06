@@ -1,12 +1,14 @@
-Shader "altVAT/altVAT_SimpleDirectionalLitShader"
+Shader "altVAT/altVAT_2D_SimpleDirectionalLitShader"
 {
     Properties
     {
-        _PositionsTex ("Positions", 3D) = "white" {}
-        _NormalsTex ("Normals", 3D) = "white" {}
+        _PositionsTex ("Positions", 2D) = "white" {}
+        _NormalsTex ("Normals", 2D) = "white" {}
         _NormalisedFrame ("Normalised Frame", Range(0,1)) = 0
         
+        
         _LightDirection ("Light Direction", Vector) = (0,0,0,0)
+        _AmbientLightAmount("Ambient Light", float) = 0
         
         _BoundsMinPos ("Min Bounds Pos", Vector) = (0,0,0,0)
         _BoundsMaxPos ("Max Bounds Pos", Vector) = (0,0,0,0)
@@ -52,10 +54,10 @@ Shader "altVAT/altVAT_SimpleDirectionalLitShader"
             float _NormalisedFrame;            
             float _Autoplay;
             
-            sampler3D _PositionsTex;
+            sampler2D _PositionsTex;
             
 
-            sampler3D _NormalsTex;
+            sampler2D _NormalsTex;
             
 
             float4 _BoundsMinPos;
@@ -67,6 +69,7 @@ Shader "altVAT/altVAT_SimpleDirectionalLitShader"
             uniform float4 _Color;
 			
             uniform float4 _LightDirection;
+            float _AmbientLightAmount;
 
             v2f vert (appdata v)
             {
@@ -78,7 +81,7 @@ Shader "altVAT/altVAT_SimpleDirectionalLitShader"
                 }
                           
                 
-                float4 diff = tex3Dlod(_PositionsTex, float4(v.uv2, _NormalisedFrame, 0));
+                float4 diff = tex2Dlod(_PositionsTex, float4(v.uv2.x, _NormalisedFrame,0,0));
                 diff.x = lerp(_BoundsMinPos.x, _BoundsMaxPos.x, diff.x);
                 diff.y = lerp(_BoundsMinPos.y, _BoundsMaxPos.y, diff.y);
                 diff.z = lerp(_BoundsMinPos.z, _BoundsMaxPos.z, diff.z);
@@ -87,20 +90,21 @@ Shader "altVAT/altVAT_SimpleDirectionalLitShader"
 
                 o.vertex = UnityObjectToClipPos(v.vertex);     
 
-                diff = tex3Dlod(_NormalsTex, float4(v.uv2, _NormalisedFrame, 0));
+                diff = tex2Dlod(_NormalsTex, float4(v.uv2.x, _NormalisedFrame, 0,0));
                 diff.x = lerp(_BoundsMinNorm.x, _BoundsMaxNorm.x, diff.x);
                 diff.y = lerp(_BoundsMinNorm.y, _BoundsMaxNorm.y, diff.y);
                 diff.z = lerp(_BoundsMinNorm.z, _BoundsMaxNorm.z, diff.z);
 
                 float4 norm = -v.normal + diff;
 
-                float illuminationAmt = clamp(dot(norm.xyz, _LightDirection), 0, 1);
+                float illuminationAmt = clamp(dot(norm.xyz, _LightDirection.xyz), _AmbientLightAmount, _LightDirection.w);
                 o.color = (illuminationAmt * _Color);
 
+                // o.color = float4(v.uv2, 0, 1);
 
                 o.normal = norm;
                 
-                UNITY_TRANSFER_FOG(o,o.vertex);
+                // UNITY_TRANSFER_FOG(o,o.vertex);
                 return o;
             }
 
@@ -108,7 +112,7 @@ Shader "altVAT/altVAT_SimpleDirectionalLitShader"
             {
                 float4 col = i.color;
                 // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
+                // UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }
             ENDCG

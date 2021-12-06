@@ -10,8 +10,20 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
     private TextAsset sourceText;
     private int textureSize = 512;
     private int textureDepth = 512;
+
+    public enum TextureMode
+    {
+        mode2D,
+        mode3D
+    };
+
+    public TextureMode texMode;
     
-    
+
+   
+
+
+
     [MenuItem("Window/[AltVAT] Create Mesh+Textures From CSV")]
     public static void Init()
     {
@@ -22,18 +34,23 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
 
     private void OnGUI()
     {
+        float yRef = 0;
+        float height = 20;
         
         GUILayout.Label("Create Textures From CSV", EditorStyles.boldLabel);
 
-        sourceText = (TextAsset) EditorGUI.ObjectField(new Rect(3, 20, position.width - 6, 20), "Source CSV", sourceText,
+        sourceText = (TextAsset) EditorGUI.ObjectField(new Rect(3, (++yRef * height), position.width - 6, height), "Source CSV", sourceText,
             typeof(TextAsset));
 
-        textureSize = (int) EditorGUI.IntField(new Rect(3, 50, position.width - 6, 20), "Texture Size", textureSize);
-        textureDepth = (int) EditorGUI.IntField(new Rect(3, 70, position.width - 6, 20), "Texture Depth", textureDepth);
+        textureSize = (int) EditorGUI.IntField(new Rect(3, (++yRef * height), position.width - 6, height), "Texture Size", textureSize);
+        textureDepth = (int) EditorGUI.IntField(new Rect(3, (++yRef * height), position.width - 6, height), "Texture Depth", textureDepth);
+
+        texMode = (TextureMode) EditorGUI.EnumPopup(new Rect(3, (++yRef * height), position.width - 6, height), "Texture Mode",
+            texMode);
 
         if (sourceText)
         {
-            if (GUI.Button(new Rect(3, 95, position.width - 6, 20), "Create Mesh and Textures"))
+            if (GUI.Button(new Rect(3, (++yRef * height), position.width - 6, height), "Create Mesh and Textures"))
             {
                 var frames = ExtractFramesFromCSV(sourceText.text, sourceText.name);
 
@@ -47,10 +64,21 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                     frames.meshFrames.RemoveRange(frames.meshFrames.Count - diff, diff);
                 }
 
-                if (frames.meshFrames[0].verts.Count > Mathf.Pow(textureSize, 2))
+                if (texMode == TextureMode.mode3D)
                 {
-                    throw new Exception("ERROR - texture size " + textureSize +
-                                        " (squared) is smaller than the number of vertices, cannot continue");
+                    if (frames.meshFrames[0].verts.Count > Mathf.Pow(textureSize, 2))
+                    {
+                        throw new Exception("ERROR - texture size " + textureSize +
+                                            " (squared) is smaller than the number of vertices, cannot continue");
+                    }
+                }
+                else
+                {
+                    if (frames.meshFrames[0].verts.Count > textureSize)
+                    {
+                        throw new Exception("ERROR - texture size " + textureSize +
+                                            " is smaller than the number of vertices, cannot continue");
+                    }
                 }
                 
                 var sourcePath = AssetDatabase.GetAssetPath(sourceText);
@@ -67,7 +95,16 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                 Debug.Log("Min bounds pos:");
                 Debug.Log(diffInfoPos.minBounds);
 
-                var positionTex = CreateTextureFromDiffs(diffInfoPos.diffs, textureSize, textureDepth);
+                Texture positionTex;
+                if (texMode == TextureMode.mode2D)
+                {
+                    positionTex = CreateTexture2DFromDiffs(diffInfoPos.diffs, textureSize, textureDepth);
+                }
+                else
+                {
+                    positionTex = CreateTexture3DFromDiffs(diffInfoPos.diffs, textureSize, textureDepth);
+                }
+ 
 
                 var targetPath = sourcePath.Replace(".csv", "_posTexture.asset");
                 SaveAsset(positionTex, targetPath);
@@ -81,8 +118,17 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                 Debug.Log(diffInfoNorm.maxBounds);
                 Debug.Log("Min bounds normals:");
                 Debug.Log(diffInfoNorm.minBounds);
+                
+                Texture normalsTex;
+                if (texMode == TextureMode.mode2D)
+                {
+                    normalsTex = CreateTexture2DFromDiffs(diffInfoNorm.diffs, textureSize, textureDepth);
+                }
+                else
+                {
+                    normalsTex = CreateTexture3DFromDiffs(diffInfoNorm.diffs, textureSize, textureDepth);
+                }
 
-                var normalsTex = CreateTextureFromDiffs(diffInfoNorm.diffs, textureSize, textureDepth);
 
                 targetPath = sourcePath.Replace(".csv", "_normalsTexture.asset");
                 SaveAsset(normalsTex, targetPath);
@@ -98,7 +144,18 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
                 SaveAsset(newMesh, targetPath);
                 
                 // create material
-                var material = new Material(Shader.Find("altVAT/altVAT_SimpleDirectionalLitShader"));
+
+                Shader sh;
+                if (texMode == TextureMode.mode2D)
+                {
+                    sh = Shader.Find("altVAT/altVAT_2D_SimpleDirectionalLitShader");
+                }
+                else
+                {
+                    sh = Shader.Find("altVAT/altVAT_3D_SimpleDirectionalLitShader");
+                }
+                
+                var material = new Material(sh);
                 material.SetTexture("_PositionsTex", positionTex);
                 material.SetTexture("_NormalsTex", normalsTex);
                 material.SetFloat("_FrameCount", frames.meshFrames.Count);
@@ -309,7 +366,7 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
     }
 
 
-    private Texture3D CreateTextureFromDiffs(List<List<Vector3>> diffs, int size, int depth)
+    private Texture3D CreateTexture3DFromDiffs(List<List<Vector3>> diffs, int size, int depth)
     {
         if (diffs.Count > depth) throw new Exception("ERROR - number of frames exceeds 3d texture depth");
         var t = new Texture3D(size, size, depth, TextureFormat.RGB24, false);
@@ -331,10 +388,40 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
         return t;
     }
     
+    private Texture2D CreateTexture2DFromDiffs(List<List<Vector3>> diffs, int width, int height)
+    {
+        if (diffs.Count > height) throw new Exception("ERROR - number of frames exceeds texture height");
+        var t = new Texture2D(width, height, TextureFormat.RGB24, false);
+        t.filterMode = FilterMode.Point;
+        for (int frame = 0; frame < diffs.Count; frame++)
+        {
+            for (int vertex = 0; vertex < diffs[frame].Count; vertex++)
+            {
+                int pX = vertex;
+                int pY = frame;
+                var v = diffs[frame][vertex];
+                var c = new Color(v.x, v.y, v.z);
+                t.SetPixel(pX, pY, c);
+            }
+        }
+        t.Apply(false);
+        
+        return t;
+    }
+    
     private Mesh CreateStartingMesh(MeshInfo l, int uvTextureSize)
     {
-        if (l.verts.Count > (uvTextureSize * uvTextureSize))
-            throw new Exception("ERROR - texture too small for this many verts");
+        if (texMode == TextureMode.mode3D)
+        {
+            if (l.verts.Count > (uvTextureSize * uvTextureSize))
+                throw new Exception("ERROR - texture too small for this many verts");    
+        }
+        else
+        {
+            if (l.verts.Count > (uvTextureSize))
+                throw new Exception("ERROR - texture too small for this many verts");    
+        }
+        
         
         var m = new Mesh();
         m.vertices = l.verts.ToArray();
@@ -343,8 +430,16 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
         m.uv = l.uvs.ToArray();
         
         // create UV2 lookup
-        m.uv2 = Enumerable.Range(0, l.verts.Count).ToList().ConvertAll(input => GetUVForIndex(input, uvTextureSize)).ToArray();
-
+        if (texMode == TextureMode.mode3D)
+        {
+            m.uv2 = Enumerable.Range(0, l.verts.Count).ToList().ConvertAll(input => GetUVForIndex3DTexture(input, uvTextureSize)).ToArray();
+        }
+        else
+        {
+            m.uv2 = Enumerable.Range(0, l.verts.Count).ToList().ConvertAll(input => GetUVForIndex2DTexture(input, uvTextureSize)).ToArray();
+        }
+        
+        
 
         // calculate indices
         if (l.verts.Count % 3 != 0) throw new Exception("ERROR - verts not divisible by 3");
@@ -356,17 +451,19 @@ public class AltVATCreateTexturesFromCSV : EditorWindow
         return m;
     }
 
-    private Vector2 GetUVForIndex(int index, int textureSizePixels)
+    private Vector2 GetUVForIndex3DTexture(int index, int textureSizePixels)
     {
         float uvX = (float) (index % textureSizePixels) / (float) textureSizePixels;
         float uvY = ((float)index / (float)textureSizePixels) / (float) textureSizePixels;
         return new Vector2(uvX, uvY);
     }
     
-    // private Vector2 GetUVForIndex(int index, int numVerts)
-    // {
-    //     int uvWidth = Mathf.CeilToInt(Mathf.Sqrt(numVerts));
-    //     return new Vector2((float)index % uvWidth, Mathf.Floor((float)uvWidth / (float)index));
-    // }
+    private Vector2 GetUVForIndex2DTexture(int index, int textureSizePixels)
+    {
+        float uvX = (float) index / (float)textureSizePixels;
+        
+        return new Vector2(uvX, 0.5f);
+    }
+    
 
 }

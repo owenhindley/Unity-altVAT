@@ -2,7 +2,7 @@
 Unity-specific alternative system for the VAT (Vertex Animation Textures) technique from Houdini
 
 Background:
-I wanted a simpler, more straightforward approach to performing vertex-level displacement on meshes in Unity, based on animated simulations / deformations in Houdini. SideFX have released a tool to do exactly this (Labs Vertex Animation Textures), which has a ton of useful features (for example, the same system handles rigid-body/per-piece animation too).. *but* I was having trouble with getting it to work correctly in my specific usecase (animated VR film for Oculus Quest - something to do with ETC texture compression I suspect).
+I wanted a simpler, more straightforward approach to performing vertex-level displacement on meshes in Unity, based on animated simulations / deformations in Houdini. SideFX have released a great tool to do exactly this (Labs Vertex Animation Textures), which has a ton of useful features (for example, the same system handles rigid-body/per-piece animation too).. *but* I was having trouble with getting it to work correctly in my specific usecase (animated VR film for Oculus Quest - something to do with ETC texture compression I suspect).
 
 
 Advantages of this system:
