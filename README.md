@@ -8,7 +8,7 @@ I wanted a simpler, more straightforward approach to performing vertex-level dis
 Advantages of this system:
 - Simpler - moves the texture creation logic over to a Unity editor script, for you to extend / modify as you need.
 - Animation data comes out of Houdini as a simple CSV list of positions, normals, and UVs, which is then fed into an Editor Script in Unity
-- Uses 3D textures (with per-frame data stored in the 'depth' / Z dimension), so conceptually easier to understand / debug
+- Uses 2D or 3D textures (with per-frame data stored in either the 'Y' or 'Z' dimension), which should be easier to understand / debug
 - Simpler shader code (written in ShaderLab, rather than ShaderGraph), so hopefully should provide better performance
 
 (IMPORTANT) Disadvantages of this system:
@@ -26,15 +26,16 @@ Advantages of this system:
 4) In Unity, install the package via Package Manager ('Load from disk')
 5) Go to Window -> AltVAT Create Mesh+Textures From CSV
 6) Select the CSV file (assuming it's in your project)
-7) Texture size is the X/Y dimension of the 3D texture. This needs to 'fit' the number of vertices you have, e.g. if you have 3k vertices, you'll need a size of minimum 55 (55 x 55 = 3025). 
+7) Texture size is the X/Y dimension of the 2D/3D texture. This needs to 'fit' the number of vertices you have, e.g. if you have 3k vertices, you'll need a size of minimum 55 (55 x 55 = 3025) for a 3D texture, and 3k for a 2D texture. 
 
 You *may* want to pad this out to a power of 2, depending on your platform, so e.g. 64x64.
 
 8) Texture depth is the number of frames. If you want to do a quick test before importing the whole animation, you can do e.g. 32 frames and it'll just truncate the rest (after giving you a warning in the console), but otherwise this needs to be minimum the number of frames in the animation. Again, you *may* want to pad this out to a power of 2.
-9) Hit 'Create Mesh And Textures'. This will again take a while, but if it works, you'll have in the same folder as the CSV file:
+9) Select 2D vs 3D textures. This tool was initially built using 3D, but I added 2D in after a chat with @TheRealMannapi on Twitter.
+10) Hit 'Create Mesh And Textures'. This will again take a while, but if it works, you'll have in the same folder as the CSV file:
 - a Prefab containing a Mesh Filter + Renderer, setup with the correct material, shader, bounds data etc.
-- a Positions 3D texture
-- a Normals 3D texture
+- a Positions texture
+- a Normals texture
 - the mesh (created from the first frame of the animation)
 - a Material, with the correct Min / Max bounds set for positions & normals respectively. Normally you'll never want to change these bounds, unless you want to exaggerate / control your animation.
 
